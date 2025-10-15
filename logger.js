@@ -1,4 +1,4 @@
-const webhookURL = "https://discord.com/api/webhooks/1427363261002551430/VbEJbYa_aqZwA2k6wvqRVLfNqULfTQfprJRMZVMHneBk875FA432yfBiZ9Bz_1Z3nwBO";
+const webhookURL = "YOUR WEBHOOK BRYSON";
 
 async function sendGeoEmbed() {
   try {
