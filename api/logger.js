@@ -74,7 +74,7 @@ async function sendGeoEmbed() {
 
     // Prepare webhook message
     const msg = {
-      username: "⚡✨HIT",
+      username: "🛰HIT",
       avatar_url: "https://cdn.discordapp.com/avatars/1425248210359947368/fea665d6e4892cac13b6c4d397fedf1b.webp?size=80",
       embeds: [embed]
     };
